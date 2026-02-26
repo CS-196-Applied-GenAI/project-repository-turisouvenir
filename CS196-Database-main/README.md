@@ -19,13 +19,11 @@ Before you can run any SQL files, you need the MySQL server installed on your ma
 1. The easiest way is using [Homebrew](https://brew.sh/). Open your terminal and run:
    ```bash
    brew install mysql
-
-
+   ```
 2. Once installed, start the service:
-```bash
-brew services start mysql
-
-```
+   ```bash
+   brew services start mysql
+   ```
 
 ### For Linux (Ubuntu/Debian)
 
@@ -58,32 +56,64 @@ If you see `mysql>`, you're in! Type `exit` to leave the shell for now.
 
 ## 📂 Step 3: Running the Schema Files
 
-The `/schema` folder contains `.sql` files that define the structure of your database (tables, columns, etc.). You should generally run them in the order they are numbered (e.g., `01_schema.sql`, then `02_seeds.sql`).
+The `schema/` folder contains SQL files that define the database structure. **Run them in this exact order** (each file depends on the previous one):
 
-The document visualizing this schema and explaining it in detail can be found [here](docslink)
+| Order | File | Purpose |
+|-------|------|---------|
+| 1 | `00_create_database.sql` | Creates the `chirper` database |
+| 2 | `01_users.sql` | Users table |
+| 3 | `02_tweets.sql` | Tweets and retweets |
+| 4 | `03_likes.sql` | Likes |
+| 5 | `04_comments.sql` | Comments (replies to tweets) |
+| 6 | `05_follows.sql` | Follow relationships |
+| 7 | `06_blocks.sql` | Block relationships |
+| 8 | `05_auth.sql` | Logout token invalidation (blacklisted_tokens) |
+
+**Important:** Run these from the **root of the `CS196-Database-main` folder** (the folder that contains `schema/` and this README).
 
 ### Method A: Using the Command Line (Recommended)
 
-This is the fastest way to "pipe" a file directly into MySQL. Run this command from the **root of this project folder**:
+Run each file in order. You will be prompted for your MySQL root password after each command:
 
 ```bash
-mysql -u root -p < schema/01_schema.sql
-
+cd /path/to/CS196-Database-main
+mysql -u root -p < schema/00_create_database.sql
+mysql -u root -p < schema/01_users.sql
+mysql -u root -p < schema/02_tweets.sql
+mysql -u root -p < schema/03_likes.sql
+mysql -u root -p < schema/04_comments.sql
+mysql -u root -p < schema/05_follows.sql
+mysql -u root -p < schema/06_blocks.sql
+mysql -u root -p < schema/05_auth.sql
 ```
 
-> **Note:** Replace `01_schema.sql` with the actual name of the file you want to run. You will be prompted for your password after hitting Enter.
+Or run them in one go (you’ll be prompted for your password once):
+
+```bash
+cd /path/to/CS196-Database-main
+mysql -u root -p < <(cat schema/00_create_database.sql schema/01_users.sql schema/02_tweets.sql schema/03_likes.sql schema/04_comments.sql schema/05_follows.sql schema/06_blocks.sql schema/05_auth.sql)
+```
 
 ### Method B: Inside the MySQL Shell
 
-If you are already logged into the MySQL prompt, you can use the `source` command:
-
 1. Log in: `mysql -u root -p`
-2. Select your database (if you've created one): `USE my_database_name;`
-3. Run the file:
-```sql
-source schema/01_schema.sql;
+2. Run each file with `source` (use the **full path** to the schema folder, or `cd` into `CS196-Database-main` first):
 
+```sql
+source /full/path/to/CS196-Database-main/schema/00_create_database.sql;
+source /full/path/to/CS196-Database-main/schema/01_users.sql;
+source /full/path/to/CS196-Database-main/schema/02_tweets.sql;
+source /full/path/to/CS196-Database-main/schema/03_likes.sql;
+source /full/path/to/CS196-Database-main/schema/04_comments.sql;
+source /full/path/to/CS196-Database-main/schema/05_follows.sql;
+source /full/path/to/CS196-Database-main/schema/06_blocks.sql;
+source /full/path/to/CS196-Database-main/schema/05_auth.sql;
 ```
+
+### After Step 3
+
+- The database `chirper` will exist with empty tables (no seed data yet).
+- Your backend app will connect to this database using the same name (`chirper`) and the credentials you configure in your environment.
 
 
 

@@ -32,10 +32,19 @@ This specification is implementation-oriented and designed for React (frontend),
 
 ## 3. Authentication
 
+### Login
+- Users must log in to accomplish any task or view any content.
+- Unauthenticated requests receive 401 and cannot access protected routes.
+
+### Logout
+- Users must be able to log out. After logout, the same token must not be accepted by the server.
+- Client may call **POST /auth/logout** (with `Authorization: Bearer <token>`). Server invalidates that token (e.g. stores it in a `blacklisted_tokens` table until its expiry). After logout, the user cannot accomplish any tasks or view content until they log in again.
+
 ### JWT
 - Single JWT access token
 - Stored in `localStorage`
 - Sent via `Authorization: Bearer <token>` header
+- Protected routes must reject blacklisted (invalidated) tokens.
 
 ### Password Hashing
 - Use bcrypt
@@ -104,6 +113,27 @@ Users may update:
 - Marks tweet as deleted
 - Likes are permanently deleted
 - Retweets remain but show "Deleted" as content
+
+---
+
+## 6b. Comments (Replies to Tweets)
+
+### Comment Model
+- id (PK)
+- user_id (FK → users.id)
+- tweet_id (FK → tweets.id)
+- content (TEXT)
+- created_at
+
+### Rules
+- Max length: 280 characters (same as tweets)
+- Minimum 1 non-space character
+- Only authenticated users may post comments
+- Users may delete their own comments
+- Block rules apply: blocked users cannot comment on each other’s tweets; comments from blocked users are not shown to the blocker and vice versa (e.g. exclude in listing)
+
+### Deleting Comments
+- Hard delete (remove row). No edit history required.
 
 ---
 
@@ -203,6 +233,7 @@ Bucket 2:
 ### Must Be Authenticated To:
 - View feed
 - Create/edit/delete tweets
+- Create/delete comments (replies)
 - Follow/unfollow
 - Block/unblock
 - Like/unlike
@@ -214,11 +245,35 @@ Unauthenticated users:
 
 ---
 
+## 12b. Non-Negotiable Features
+
+The app **must** support at least the following. Others may be added.
+
+1. **Create an account** – Usernames unique; passwords have restrictions (per User Model).
+2. **Login** – Required to accomplish any task or view content.
+3. **Logout** – Token invalidated; user cannot use the app until logged in again.
+4. **Update profile** – Bio, username, profile picture.
+5. **Post (Tweet)** – Character limit on tweets (280).
+6. **Delete a post** – Soft delete; likes removed; retweets remain with “Deleted” content.
+7. **View a feed of recent tweets** – Newest to oldest; page size decided (e.g. 50); cursor-based.
+8. **Refresh tweet feed** – Re-fetch feed (e.g. same endpoint, new cursor or reset).
+9. **Follow a user**
+10. **Unfollow a user**
+11. **Block a user** – No content from blocked user visible to blocker, and vice versa.
+12. **Unblock a user**
+13. **Like a post**
+14. **Unlike a post**
+15. **Retweet a post**
+16. **Unretweet a post**
+
+---
+
 ## 13. API Endpoints (High-Level)
 
 ### Auth
 - POST /auth/register
 - POST /auth/login
+- POST /auth/logout (invalidates current token; body/header: Bearer token)
 
 ### Profile
 - GET /users/:id
@@ -230,6 +285,11 @@ Unauthenticated users:
 - PUT /tweets/:id
 - DELETE /tweets/:id
 - GET /feed
+
+### Comments
+- POST /tweets/:id/comments
+- GET /tweets/:id/comments (paginated; exclude blocked)
+- DELETE /comments/:id (author only)
 
 ### Likes
 - POST /tweets/:id/like
@@ -257,6 +317,7 @@ Unauthenticated users:
 - Unique(user_id, original_tweet_id) for retweets
 - Unique(follower_id, following_id)
 - Unique(blocker_id, blocked_id)
+- blacklisted_tokens: token (PK), expiration_time, created_at (for logout)
 
 ---
 
