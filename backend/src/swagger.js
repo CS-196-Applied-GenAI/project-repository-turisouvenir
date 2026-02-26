@@ -35,7 +35,7 @@ const spec = {
       post: {
         summary: 'Register',
         tags: ['Auth'],
-        requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['username', 'password'], properties: { username: { type: 'string' }, password: { type: 'string' }, bio: { type: 'string' } } } } } },
+        requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['username', 'email', 'password'], properties: { username: { type: 'string' }, email: { type: 'string', format: 'email' }, password: { type: 'string' }, bio: { type: 'string' } } } } } },
         responses: { 201: { description: 'User created' }, 400: { description: 'Validation error' }, 409: { description: 'Username taken' } },
       },
     },
@@ -69,7 +69,7 @@ const spec = {
         summary: 'Update own profile (bio, username)',
         tags: ['Users'],
         security: [{ bearerAuth: [] }],
-        requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { bio: { type: 'string' }, username: { type: 'string' } } } } } },
+        requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { bio: { type: 'string' }, username: { type: 'string' }, email: { type: 'string', format: 'email' } } } } } },
         responses: { 200: { description: 'Updated user' }, 409: { description: 'Username taken' } },
       },
     },

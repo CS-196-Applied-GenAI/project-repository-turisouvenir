@@ -21,11 +21,12 @@ describe('POST /auth/register', () => {
   it('returns 201 and user (no password) when valid', async () => {
     mockQuery
       .mockResolvedValueOnce([[]]) // isUsernameTaken
+      .mockResolvedValueOnce([[]]) // isEmailTaken
       .mockResolvedValueOnce([{ insertId: 1 }]) // create
-      .mockResolvedValueOnce([[{ id: 1, username: 'alice', bio: null, profile_picture_url: null, created_at: new Date(), updated_at: new Date() }]]); // findById
+      .mockResolvedValueOnce([[{ id: 1, username: 'alice', email: 'alice@example.com', bio: null, profile_picture_url: null, created_at: new Date(), updated_at: new Date() }]]); // findById
     const res = await request(app)
       .post('/auth/register')
-      .send({ username: 'alice', password: 'Password1' });
+      .send({ username: 'alice', email: 'alice@example.com', password: 'Password1' });
     expect(res.status).toBe(201);
     expect(res.body.user).toBeDefined();
     expect(res.body.user.username).toBe('alice');
@@ -37,7 +38,7 @@ describe('POST /auth/register', () => {
     mockQuery.mockResolvedValueOnce([[{ 1: 1 }]]); // isUsernameTaken -> taken
     const res = await request(app)
       .post('/auth/register')
-      .send({ username: 'alice', password: 'Password1' });
+      .send({ username: 'alice', email: 'alice@example.com', password: 'Password1' });
     expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/already taken/i);
   });
@@ -45,22 +46,22 @@ describe('POST /auth/register', () => {
   it('returns 400 for invalid username', async () => {
     const res = await request(app)
       .post('/auth/register')
-      .send({ username: 'ab', password: 'Password1' });
+      .send({ username: 'ab', email: 'a@b.com', password: 'Password1' });
     expect(res.status).toBe(400);
   });
 
   it('returns 400 for invalid password', async () => {
     const res = await request(app)
       .post('/auth/register')
-      .send({ username: 'alice', password: 'short' });
+      .send({ username: 'alice', email: 'alice@example.com', password: 'short' });
     expect(res.status).toBe(400);
   });
 
   it('returns 500 when DB throws', async () => {
-    mockQuery.mockResolvedValueOnce([[]]).mockRejectedValueOnce(new Error('DB error'));
+    mockQuery.mockResolvedValueOnce([[]]).mockResolvedValueOnce([[]]).mockRejectedValueOnce(new Error('DB error'));
     const res = await request(app)
       .post('/auth/register')
-      .send({ username: 'alice', password: 'Password1' });
+      .send({ username: 'alice', email: 'alice@example.com', password: 'Password1' });
     expect(res.status).toBe(500);
   });
 });

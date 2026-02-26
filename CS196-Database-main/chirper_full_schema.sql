@@ -7,6 +7,7 @@ CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(20) NOT NULL,
     username_lower VARCHAR(20) GENERATED ALWAYS AS (LOWER(username)) STORED,
+    email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     bio TEXT,
     profile_picture_url VARCHAR(512),

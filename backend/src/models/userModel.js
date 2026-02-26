@@ -10,7 +10,7 @@ const { query } = require('../config/database');
  * @returns {Promise<object|null>}
  */
 async function findById(id) {
-  const [rows] = await query('SELECT id, username, bio, profile_picture_url, created_at, updated_at FROM users WHERE id = ?', [id]);
+  const [rows] = await query('SELECT id, username, email, bio, profile_picture_url, created_at, updated_at FROM users WHERE id = ?', [id]);
   return rows[0] || null;
 }
 
@@ -22,7 +22,7 @@ async function findById(id) {
 async function findByUsername(username) {
   const lower = username.trim().toLowerCase();
   const [rows] = await query(
-    'SELECT id, username, password_hash, bio, profile_picture_url, created_at, updated_at FROM users WHERE username_lower = ?',
+    'SELECT id, username, email, password_hash, bio, profile_picture_url, created_at, updated_at FROM users WHERE username_lower = ?',
     [lower]
   );
   return rows[0] || null;
@@ -47,24 +47,42 @@ async function isUsernameTaken(username, excludeUserId = null) {
 }
 
 /**
+ * Check if email is taken.
+ * @param {string} email
+ * @param {number} [excludeUserId]
+ * @returns {Promise<boolean>}
+ */
+async function isEmailTaken(email, excludeUserId = null) {
+  const lower = email.trim().toLowerCase();
+  let sql = 'SELECT 1 FROM users WHERE LOWER(email) = ?';
+  const params = [lower];
+  if (excludeUserId != null) {
+    sql += ' AND id != ?';
+    params.push(excludeUserId);
+  }
+  const [rows] = await query(sql, params);
+  return rows.length > 0;
+}
+
+/**
  * Insert a new user. Returns the inserted id.
- * @param {{ username: string, passwordHash: string, bio?: string }}
+ * @param {{ username: string, email: string, passwordHash: string, bio?: string }}
  * @returns {Promise<number>}
  */
-async function create({ username, passwordHash, bio = null }) {
+async function create({ username, email, passwordHash, bio = null }) {
   const [result] = await query(
-    'INSERT INTO users (username, password_hash, bio) VALUES (?, ?, ?)',
-    [username.trim(), passwordHash, bio]
+    'INSERT INTO users (username, email, password_hash, bio) VALUES (?, ?, ?, ?)',
+    [username.trim(), email.trim().toLowerCase(), passwordHash, bio]
   );
   return result.insertId;
 }
 
 /**
- * Update user by id. Only updates provided fields (bio, username, profile_picture_url).
+ * Update user by id. Only updates provided fields (bio, username, email, profile_picture_url).
  * @param {number} id
- * @param {{ bio?: string, username?: string, profile_picture_url?: string }}
+ * @param {{ bio?: string, username?: string, email?: string, profile_picture_url?: string }}
  */
-async function update(id, { bio, username, profile_picture_url }) {
+async function update(id, { bio, username, email, profile_picture_url }) {
   const updates = [];
   const params = [];
   if (bio !== undefined) {
@@ -74,6 +92,10 @@ async function update(id, { bio, username, profile_picture_url }) {
   if (username !== undefined) {
     updates.push('username = ?');
     params.push(username.trim());
+  }
+  if (email !== undefined) {
+    updates.push('email = ?');
+    params.push(email.trim().toLowerCase());
   }
   if (profile_picture_url !== undefined) {
     updates.push('profile_picture_url = ?');
@@ -88,6 +110,7 @@ module.exports = {
   findById,
   findByUsername,
   isUsernameTaken,
+  isEmailTaken,
   create,
   update,
 };

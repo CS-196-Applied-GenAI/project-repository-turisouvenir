@@ -28,7 +28,7 @@ describe('GET /users/:id', () => {
 
   it('returns 200 and user when valid', async () => {
     mockRequireAuth();
-    mockQuery.mockResolvedValueOnce([[{ id: 1, username: 'alice', bio: null, profile_picture_url: null, created_at: new Date(), updated_at: new Date() }]]);
+    mockQuery.mockResolvedValueOnce([[{ id: 1, username: 'alice', email: 'alice@example.com', bio: null, profile_picture_url: null, created_at: new Date(), updated_at: new Date() }]]);
     const res = await request(app)
       .get('/users/1')
       .set(authHeader(getToken()));
@@ -57,7 +57,7 @@ describe('PUT /users/me', () => {
   it('returns 200 when updating bio', async () => {
     mockRequireAuth();
     mockQuery.mockResolvedValueOnce([undefined]); // update
-    mockQuery.mockResolvedValueOnce([[{ id: 1, username: 'alice', bio: 'Hi', profile_picture_url: null, created_at: new Date(), updated_at: new Date() }]]); // findById
+    mockQuery.mockResolvedValueOnce([[{ id: 1, username: 'alice', email: 'alice@example.com', bio: 'Hi', profile_picture_url: null, created_at: new Date(), updated_at: new Date() }]]); // findById
     const res = await request(app)
       .put('/users/me')
       .set(authHeader(getToken()))

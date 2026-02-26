@@ -56,6 +56,7 @@ This specification is implementation-oriented and designed for React (frontend),
 ### Fields
 - id (PK)
 - username (unique, case-insensitive)
+- email (unique, required)
 - password_hash
 - bio (nullable)
 - profile_picture_url (nullable)

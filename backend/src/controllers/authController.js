@@ -6,28 +6,33 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const userModel = require('../models/userModel');
 const blacklistModel = require('../models/blacklistModel');
-const { validateUsername, validatePassword } = require('../utils/validators');
+const { validateUsername, validateEmail, validatePassword } = require('../utils/validators');
 
 const SALT_ROUNDS = 10;
 
 /**
  * POST /auth/register
- * Body: { username, password, bio? }
+ * Body: { username, email, password, bio? }
  */
 async function register(req, res, next) {
   try {
-    const { username, password, bio } = req.body;
+    const { username, email, password, bio } = req.body;
     const usernameErr = validateUsername(username);
     if (usernameErr) return res.status(400).json({ error: usernameErr });
+    const emailErr = validateEmail(email);
+    if (emailErr) return res.status(400).json({ error: emailErr });
     const passwordErr = validatePassword(password);
     if (passwordErr) return res.status(400).json({ error: passwordErr });
 
     const taken = await userModel.isUsernameTaken(username);
     if (taken) return res.status(409).json({ error: 'Username already taken' });
+    const emailTaken = await userModel.isEmailTaken(email);
+    if (emailTaken) return res.status(409).json({ error: 'Email already taken' });
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     const id = await userModel.create({
       username: username.trim(),
+      email: email.trim().toLowerCase(),
       passwordHash,
       bio: bio != null ? String(bio).trim() : null,
     });
@@ -91,6 +96,7 @@ function toPublicUser(row) {
   return {
     id: row.id,
     username: row.username,
+    email: row.email ?? null,
     bio: row.bio ?? null,
     profile_picture_url: row.profile_picture_url ?? null,
     created_at: row.created_at,

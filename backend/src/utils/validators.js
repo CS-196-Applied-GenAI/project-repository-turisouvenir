@@ -11,6 +11,7 @@ const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
 const PASSWORD_MIN = 8;
 const PASSWORD_UPPER_REGEX = /[A-Z]/;
 const PASSWORD_NUMBER_REGEX = /[0-9]/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TWEET_MAX = 280;
 const TWEET_MIN_NONSPACE = 5;
 
@@ -25,6 +26,20 @@ function validateUsername(username) {
   if (t.length < USERNAME_MIN) return `Username must be at least ${USERNAME_MIN} characters`;
   if (t.length > USERNAME_MAX) return `Username must be at most ${USERNAME_MAX} characters`;
   if (!USERNAME_REGEX.test(t)) return 'Username may only contain letters, numbers, and underscore';
+  return null;
+}
+
+/**
+ * Validate email. Returns null if valid, or an error message string.
+ * @param {string} email
+ * @returns {string|null}
+ */
+function validateEmail(email) {
+  if (typeof email !== 'string') return 'Email must be a string';
+  const t = email.trim().toLowerCase();
+  if (!t) return 'Email is required';
+  if (!EMAIL_REGEX.test(t)) return 'Invalid email format';
+  if (t.length > 255) return 'Email too long';
   return null;
 }
 
@@ -69,6 +84,7 @@ function validateCommentContent(content) {
 
 module.exports = {
   validateUsername,
+  validateEmail,
   validatePassword,
   validateTweetContent,
   validateCommentContent,

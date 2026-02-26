@@ -7,7 +7,8 @@ This folder started from the professor’s proposed schema. The SQL files were u
 | Professor's schema | Our spec | Change |
 |--------------------|----------|--------|
 | `username` VARCHAR(50) UNIQUE | `username` VARCHAR(20), case-insensitive unique | Added `username_lower` (generated) + UNIQUE on it; max length 20 per spec |
-| `email`, `name` | Not in spec | Removed |
+| `email` | `email` VARCHAR(255) UNIQUE NOT NULL | Added (required for registration) |
+| `name` | Not in spec | Removed |
 | `profile_picture` | `profile_picture_url` | Renamed |
 | No `updated_at` | `updated_at` | Added |
 | `password_hash` TEXT | `password_hash` VARCHAR(255) | Kept NOT NULL; use VARCHAR for bcrypt output |

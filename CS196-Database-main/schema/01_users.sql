@@ -1,11 +1,12 @@
 USE chirper;
 
--- Users table (spec: id, username, password_hash, bio, profile_picture_url, created_at, updated_at)
--- Username 3–20 chars; case-insensitive uniqueness via username_lower
+-- Users table (spec: id, username, email, password_hash, bio, profile_picture_url, created_at, updated_at)
+-- Username 3–20 chars; case-insensitive uniqueness via username_lower. Email unique.
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(20) NOT NULL,
     username_lower VARCHAR(20) GENERATED ALWAYS AS (LOWER(username)) STORED,
+    email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     bio TEXT,
     profile_picture_url VARCHAR(512),

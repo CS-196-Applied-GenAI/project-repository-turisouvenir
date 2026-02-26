@@ -2,7 +2,7 @@
  * User controller: get user by id, update me, profile picture upload.
  */
 const userModel = require('../models/userModel');
-const { validateUsername } = require('../utils/validators');
+const { validateUsername, validateEmail } = require('../utils/validators');
 const s3Service = require('../services/s3Service');
 
 /**
@@ -22,13 +22,13 @@ async function getUserById(req, res, next) {
 }
 
 /**
- * PUT /users/me - Update authenticated user's profile (bio, username).
+ * PUT /users/me - Update authenticated user's profile (bio, username, email).
  * Auth required. Cannot change password or id.
  */
 async function updateMe(req, res, next) {
   try {
     const userId = req.user.id;
-    const { bio, username } = req.body;
+    const { bio, username, email } = req.body;
     const updates = {};
     if (bio !== undefined) updates.bio = typeof bio === 'string' ? bio.trim() : null;
     if (username !== undefined) {
@@ -37,6 +37,13 @@ async function updateMe(req, res, next) {
       const taken = await userModel.isUsernameTaken(username, userId);
       if (taken) return res.status(409).json({ error: 'Username already taken' });
       updates.username = username.trim();
+    }
+    if (email !== undefined) {
+      const err = validateEmail(email);
+      if (err) return res.status(400).json({ error: err });
+      const taken = await userModel.isEmailTaken(email, userId);
+      if (taken) return res.status(409).json({ error: 'Email already taken' });
+      updates.email = email.trim().toLowerCase();
     }
     if (Object.keys(updates).length === 0) {
       const user = await userModel.findById(userId);

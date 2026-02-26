@@ -3,6 +3,7 @@
  */
 const {
   validateUsername,
+  validateEmail,
   validatePassword,
   validateTweetContent,
   validateCommentContent,
@@ -38,6 +39,22 @@ describe('validateUsername', () => {
   it('trims username before length check', () => {
     expect(validateUsername('  ab  ')).not.toBeNull();
     expect(validateUsername('   abc   ')).toBeNull();
+  });
+});
+
+describe('validateEmail', () => {
+  it('returns null for valid email', () => {
+    expect(validateEmail('a@b.com')).toBeNull();
+    expect(validateEmail('user@example.org')).toBeNull();
+  });
+  it('returns error for invalid format', () => {
+    expect(validateEmail('invalid')).not.toBeNull();
+    expect(validateEmail('a@')).not.toBeNull();
+    expect(validateEmail('@b.com')).not.toBeNull();
+  });
+  it('returns error for empty', () => {
+    expect(validateEmail('')).not.toBeNull();
+    expect(validateEmail('   ')).not.toBeNull();
   });
 });
 
