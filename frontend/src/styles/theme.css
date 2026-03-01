@@ -1,0 +1,177 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+  
+  /* Gen Z Vibrant Color Palette - Dark First */
+  --background: #0F0A1E;
+  --foreground: #F8F9FF;
+  --card: rgba(26, 18, 41, 0.7);
+  --card-foreground: #F8F9FF;
+  --popover: rgba(26, 18, 41, 0.95);
+  --popover-foreground: #F8F9FF;
+  
+  /* Primary - Electric Purple */
+  --primary: #A78BFA;
+  --primary-foreground: #0F0A1E;
+  
+  /* Secondary - Coral Pink */
+  --secondary: #FB7185;
+  --secondary-foreground: #F8F9FF;
+  
+  /* Muted */
+  --muted: rgba(139, 92, 246, 0.1);
+  --muted-foreground: #A1A1B8;
+  
+  /* Accent - Electric Blue */
+  --accent: #60A5FA;
+  --accent-foreground: #F8F9FF;
+  
+  /* Success - Lime (for streaks) */
+  --success: #84CC16;
+  --success-foreground: #0F0A1E;
+  
+  /* Destructive */
+  --destructive: #F43F5E;
+  --destructive-foreground: #F8F9FF;
+  
+  /* Borders & Inputs */
+  --border: rgba(167, 139, 250, 0.15);
+  --input: rgba(167, 139, 250, 0.1);
+  --input-background: rgba(26, 18, 41, 0.5);
+  --switch-background: rgba(167, 139, 250, 0.2);
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
+  --gradient-secondary: linear-gradient(135deg, #FB7185 0%, #F472B6 100%);
+  --gradient-accent: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
+  --gradient-success: linear-gradient(135deg, #84CC16 0%, #A3E635 100%);
+  
+  --font-weight-medium: 600;
+  --font-weight-normal: 400;
+  --ring: #A78BFA;
+  --radius: 1rem;
+  
+  /* Chart colors */
+  --chart-1: #A78BFA;
+  --chart-2: #FB7185;
+  --chart-3: #60A5FA;
+  --chart-4: #84CC16;
+  --chart-5: #F472B6;
+}
+
+.dark {
+  --background: #0F0A1E;
+  --foreground: #F8F9FF;
+  --card: rgba(26, 18, 41, 0.7);
+  --card-foreground: #F8F9FF;
+  --popover: rgba(26, 18, 41, 0.95);
+  --popover-foreground: #F8F9FF;
+  --primary: #A78BFA;
+  --primary-foreground: #0F0A1E;
+  --secondary: #FB7185;
+  --secondary-foreground: #F8F9FF;
+  --muted: rgba(139, 92, 246, 0.1);
+  --muted-foreground: #A1A1B8;
+  --accent: #60A5FA;
+  --accent-foreground: #F8F9FF;
+  --destructive: #F43F5E;
+  --destructive-foreground: #F8F9FF;
+  --border: rgba(167, 139, 250, 0.15);
+  --input: rgba(167, 139, 250, 0.1);
+  --ring: #A78BFA;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /**
+  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
+  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
+  */
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
