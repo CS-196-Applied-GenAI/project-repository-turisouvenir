@@ -34,8 +34,9 @@ export const AuthScreen: React.FC = () => {
         toast.success('Account created! Welcome to Chirper! 🚀');
       }
       navigate('/feed');
-    } catch (error) {
-      toast.error('Something went wrong. Try again!');
+    } catch (error: unknown) {
+      const e = error as { error?: string };
+      toast.error(e?.error || 'Something went wrong. Try again!');
     } finally {
       setIsLoading(false);
     }

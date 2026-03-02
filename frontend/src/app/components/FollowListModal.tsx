@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, UserPlus, UserMinus, Loader2 } from 'lucide-react';
-import { UserProfile, getFollowers, getFollowing, toggleFollow } from '../services/mockData';
+import { getFollowers, getFollowing, follow, unfollow } from '../api/users';
+import type { UserProfile } from '../api/users';
 import { UserAvatar } from './UserAvatar';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router';
@@ -14,11 +15,11 @@ interface FollowListModalProps {
   type: 'followers' | 'following';
 }
 
-export const FollowListModal: React.FC<FollowListModalProps> = ({ 
-  isOpen, 
-  onClose, 
+export const FollowListModal: React.FC<FollowListModalProps> = ({
+  isOpen,
+  onClose,
   userId,
-  type 
+  type,
 }) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,46 +27,40 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isOpen) {
-      loadUsers();
-    }
+    if (isOpen) loadUsers();
   }, [isOpen, userId, type]);
 
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const data = type === 'followers' 
-        ? await getFollowers(userId)
-        : await getFollowing(userId);
-      
+      const data =
+        type === 'followers' ? await getFollowers(userId) : await getFollowing(userId);
       setUsers(data);
-      
-      // Initialize follow states
       const states: Record<string, boolean> = {};
-      data.forEach(user => {
-        states[user.id] = user.is_following || false;
+      data.forEach((u) => {
+        states[String(u.id)] = u.is_following ?? false;
       });
       setFollowStates(states);
-    } catch (error) {
-      console.error('Error loading users:', error);
-      toast.error('Failed to load users');
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to load users');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFollow = async (user: UserProfile) => {
+  const handleFollow = async (targetUser: UserProfile) => {
     try {
-      const result = await toggleFollow(user.id);
-      setFollowStates(prev => ({ ...prev, [user.id]: result.is_following }));
-      
-      if (result.is_following) {
-        toast.success(`Following @${user.username}! 🎉`);
-      } else {
-        toast.success(`Unfollowed @${user.username}`);
-      }
-    } catch (error) {
-      toast.error('Failed to update follow status');
+      const result = targetUser.is_following
+        ? await unfollow(String(targetUser.id))
+        : await follow(String(targetUser.id));
+      setFollowStates((prev) => ({ ...prev, [String(targetUser.id)]: result.is_following }));
+      toast.success(
+        result.is_following ? `Following @${targetUser.username}! 🎉` : `Unfollowed @${targetUser.username}`
+      );
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to update follow');
     }
   };
 
@@ -79,7 +74,6 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-        {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -88,7 +82,6 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
           onClick={onClose}
         />
 
-        {/* Modal */}
         <motion.div
           initial={{ opacity: 0, y: 50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -97,10 +90,9 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
           style={{
             background: 'linear-gradient(180deg, rgba(26, 18, 41, 0.98) 0%, rgba(18, 12, 30, 0.98) 100%)',
             backdropFilter: 'blur(20px)',
-            boxShadow: '0 20px 60px rgba(139, 92, 246, 0.3)'
+            boxShadow: '0 20px 60px rgba(139, 92, 246, 0.3)',
           }}
         >
-          {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border/50">
             <h2 className="text-2xl font-bold">
               {type === 'followers' ? 'Followers' : 'Following'}
@@ -115,75 +107,69 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
             </motion.button>
           </div>
 
-          {/* Content */}
           <div className="overflow-y-auto max-h-[calc(80vh-88px)] p-6">
             {loading ? (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : users.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">
-                  {type === 'followers' 
+                  {type === 'followers'
                     ? 'No followers yet'
                     : 'Not following anyone yet'}
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {users.map((user, index) => (
+                {users.map((u) => (
                   <motion.div
-                    key={user.id}
+                    key={u.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
                     className="flex items-center gap-3 p-4 rounded-2xl border border-border/30 hover:border-primary/50 transition-all cursor-pointer"
                     style={{
                       background: 'rgba(26, 18, 41, 0.3)',
-                      backdropFilter: 'blur(10px)'
+                      backdropFilter: 'blur(10px)',
                     }}
-                    onClick={() => handleUserClick(user.username)}
+                    onClick={() => handleUserClick(u.username)}
                   >
                     <UserAvatar
-                      src={user.profile_picture_url}
-                      username={user.username}
+                      src={u.profile_picture_url ?? undefined}
+                      username={u.username}
                       size="medium"
-                      level={user.level}
+                      level={u.level ?? 1}
                     />
-                    
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold truncate">@{user.username}</h3>
-                      {user.bio && (
-                        <p className="text-sm text-muted-foreground truncate">
-                          {user.bio}
-                        </p>
+                      <h3 className="font-semibold truncate">@{u.username}</h3>
+                      {u.bio && (
+                        <p className="text-sm text-muted-foreground truncate">{u.bio}</p>
                       )}
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-primary">
-                          Level {user.level}
-                        </span>
+                        <span className="text-xs text-primary">Level {u.level ?? 1}</span>
                         <span className="text-xs text-muted-foreground">•</span>
                         <span className="text-xs text-muted-foreground">
-                          {user.followers_count} followers
+                          {u.followers_count} followers
                         </span>
                       </div>
                     </div>
-
                     <Button
                       size="sm"
                       className="rounded-full px-4 shrink-0"
                       style={{
-                        background: followStates[user.id] 
-                          ? 'rgba(139, 92, 246, 0.2)' 
+                        background: followStates[String(u.id)]
+                          ? 'rgba(139, 92, 246, 0.2)'
                           : 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
-                        border: followStates[user.id] ? '1px solid rgba(139, 92, 246, 0.5)' : 'none'
+                        border: followStates[String(u.id)]
+                          ? '1px solid rgba(139, 92, 246, 0.5)'
+                          : 'none',
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleFollow(user);
+                        handleFollow(u);
                       }}
                     >
-                      {followStates[user.id] ? (
+                      {followStates[String(u.id)] ? (
                         <>
                           <UserMinus className="w-4 h-4 mr-1" />
                           Following

@@ -5,18 +5,24 @@ import { Plus, Loader, RefreshCw } from 'lucide-react';
 import { ChirpCard } from '../components/ChirpCard';
 import { ChirpComposer } from '../components/ChirpComposer';
 import { BottomNav } from '../components/BottomNav';
-import { getFeed, toggleLike, toggleRetweet, createChirp, Chirp } from '../services/mockData';
+import { getFeed } from '../api/feed';
+import { createTweet, likeTweet, unlikeTweet, retweet, unretweet } from '../api/tweets';
+import type { Chirp } from '../api/feed';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
+function chirpToDisplay(c: Chirp): Chirp & { id: string } {
+  return { ...c, id: String(c.id) };
+}
+
 export const FeedScreen: React.FC = () => {
-  const [chirps, setChirps] = useState<Chirp[]>([]);
+  const [chirps, setChirps] = useState<(Chirp & { id: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [showComposer, setShowComposer] = useState(false);
-  
+
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -28,8 +34,11 @@ export const FeedScreen: React.FC = () => {
     setIsLoading(true);
     try {
       const { feed, nextCursor: cursor } = await getFeed(20);
-      setChirps(feed);
+      setChirps(feed.map(chirpToDisplay));
       setNextCursor(cursor);
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to load feed');
     } finally {
       setIsLoading(false);
     }
@@ -37,12 +46,15 @@ export const FeedScreen: React.FC = () => {
 
   const loadMoreChirps = async () => {
     if (!nextCursor || isLoadingMore) return;
-    
+
     setIsLoadingMore(true);
     try {
       const { feed, nextCursor: cursor } = await getFeed(20, nextCursor);
-      setChirps(prev => [...prev, ...feed]);
+      setChirps((prev) => [...prev, ...feed.map(chirpToDisplay)]);
       setNextCursor(cursor);
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to load more');
     } finally {
       setIsLoadingMore(false);
     }
@@ -52,9 +64,12 @@ export const FeedScreen: React.FC = () => {
     setIsRefreshing(true);
     try {
       const { feed, nextCursor: cursor } = await getFeed(20);
-      setChirps(feed);
+      setChirps(feed.map(chirpToDisplay));
       setNextCursor(cursor);
       toast.success('Feed refreshed! ✨');
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to refresh');
     } finally {
       setIsRefreshing(false);
     }
@@ -62,25 +77,124 @@ export const FeedScreen: React.FC = () => {
 
   const handleCreateChirp = async (content: string) => {
     if (!user) return;
-    
-    const newChirp = await createChirp(content, user.id);
-    setChirps(prev => [newChirp, ...prev]);
-    setShowComposer(false);
-    
-    // Award XP for creating a chirp
-    user.xp += 10;
-    toast.success('+10 XP for chirping! 🎉');
+
+    try {
+      const newChirp = await createTweet(content);
+      setChirps((prev) => [chirpToDisplay(newChirp), ...prev]);
+      setShowComposer(false);
+      toast.success('Chirped! 🎉');
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to post');
+    }
   };
 
   const handleLike = async (id: string) => {
-    await toggleLike(id);
-    setChirps(prev => [...prev]);
+    const chirp = chirps.find((c) => c.id === id);
+    if (!chirp) return;
+    const target = chirp.original_tweet || chirp;
+    try {
+      if (chirp.is_liked) {
+        await unlikeTweet(id);
+        setChirps((prev) =>
+          prev.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  is_liked: false,
+                  likes_count: Math.max(0, c.likes_count - 1),
+                  ...(c.original_tweet && {
+                    original_tweet: {
+                      ...c.original_tweet,
+                      is_liked: false,
+                      likes_count: Math.max(0, c.original_tweet.likes_count - 1),
+                    },
+                  }),
+                }
+              : c
+          )
+        );
+      } else {
+        await likeTweet(id);
+        setChirps((prev) =>
+          prev.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  is_liked: true,
+                  likes_count: c.likes_count + 1,
+                  ...(c.original_tweet && {
+                    original_tweet: {
+                      ...c.original_tweet,
+                      is_liked: true,
+                      likes_count: c.original_tweet.likes_count + 1,
+                    },
+                  }),
+                }
+              : c
+          )
+        );
+      }
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to update like');
+    }
   };
 
   const handleRetweet = async (id: string) => {
-    await toggleRetweet(id);
-    setChirps(prev => [...prev]);
-    toast.success('Rechirped! 🔄');
+    const chirp = chirps.find((c) => c.id === id);
+    if (!chirp) return;
+    const originalId = chirp.original_tweet_id || chirp.id;
+    try {
+      if (chirp.is_retweeted) {
+        await unretweet(String(originalId));
+        setChirps((prev) =>
+          prev.map((c) => {
+            const match = c.id === id || c.original_tweet_id === Number(originalId);
+            if (!match) return c;
+            const base = c.original_tweet || c;
+            return {
+              ...c,
+              is_retweeted: false,
+              retweets_count: Math.max(0, base.retweets_count - 1),
+              ...(c.original_tweet && {
+                original_tweet: {
+                  ...c.original_tweet,
+                  is_retweeted: false,
+                  retweets_count: Math.max(0, c.original_tweet.retweets_count - 1),
+                },
+              }),
+            };
+          })
+        );
+        toast.success('Unrechirped');
+      } else {
+        await retweet(String(originalId));
+        setChirps((prev) =>
+          prev.map((c) => {
+            const base = c.original_tweet || c;
+            const isThisChirp = c.id === id || (base && base.id === Number(originalId));
+            if (!isThisChirp) return c;
+            return {
+              ...c,
+              is_retweeted: true,
+              retweets_count: base.retweets_count + 1,
+              ...(c.original_tweet && {
+                original_tweet: {
+                  ...c.original_tweet,
+                  is_retweeted: true,
+                  retweets_count: c.original_tweet.retweets_count + 1,
+                },
+              }),
+            };
+          })
+        );
+        toast.success('Rechirped! 🔄');
+      }
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to rechirp');
+    }
   };
 
   const handleComment = (id: string) => {
@@ -96,12 +210,11 @@ export const FeedScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0 lg:pl-64">
-      {/* Header */}
-      <div 
+      <div
         className="sticky top-0 z-40 border-b border-border/50"
         style={{
           background: 'rgba(15, 10, 30, 0.8)',
-          backdropFilter: 'blur(20px)'
+          backdropFilter: 'blur(20px)',
         }}
       >
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -130,8 +243,7 @@ export const FeedScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Feed content */}
-      <div 
+      <div
         className="max-w-2xl mx-auto px-4 py-6 space-y-4 overflow-y-auto"
         onScroll={handleScroll}
         style={{ maxHeight: 'calc(100vh - 140px)' }}
@@ -144,11 +256,11 @@ export const FeedScreen: React.FC = () => {
                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                 className="inline-block mb-4"
               >
-                <div 
+                <div
                   className="w-16 h-16 rounded-full flex items-center justify-center"
                   style={{
                     background: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
-                    boxShadow: '0 8px 30px rgba(139, 92, 246, 0.5)'
+                    boxShadow: '0 8px 30px rgba(139, 92, 246, 0.5)',
                   }}
                 >
                   <Loader className="w-8 h-8 text-primary-foreground" />
@@ -159,15 +271,10 @@ export const FeedScreen: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Quick composer */}
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
               <ChirpComposer onSubmit={handleCreateChirp} compact />
             </motion.div>
 
-            {/* Chirps list */}
             <AnimatePresence mode="popLayout">
               {chirps.map((chirp) => (
                 <ChirpCard
@@ -181,7 +288,6 @@ export const FeedScreen: React.FC = () => {
               ))}
             </AnimatePresence>
 
-            {/* Loading more indicator */}
             {isLoadingMore && (
               <div className="flex justify-center py-8">
                 <motion.div
@@ -193,7 +299,6 @@ export const FeedScreen: React.FC = () => {
               </div>
             )}
 
-            {/* End of feed */}
             {!nextCursor && chirps.length > 0 && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -208,7 +313,6 @@ export const FeedScreen: React.FC = () => {
         )}
       </div>
 
-      {/* Floating action button for mobile composer */}
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
@@ -216,13 +320,12 @@ export const FeedScreen: React.FC = () => {
         className="fixed bottom-24 right-6 lg:bottom-8 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl z-40"
         style={{
           background: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
-          boxShadow: '0 8px 30px rgba(139, 92, 246, 0.5)'
+          boxShadow: '0 8px 30px rgba(139, 92, 246, 0.5)',
         }}
       >
         <Plus className="w-6 h-6 text-primary-foreground" />
       </motion.button>
 
-      {/* Full screen composer modal */}
       <AnimatePresence>
         {showComposer && (
           <motion.div

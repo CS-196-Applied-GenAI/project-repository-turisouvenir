@@ -3,10 +3,10 @@
  */
 const tweetModel = require('../models/tweetModel');
 const likeModel = require('../models/likeModel');
-const followModel = require('../models/followModel');
 const blockModel = require('../models/blockModel');
 const userModel = require('../models/userModel');
 const { validateTweetContent } = require('../utils/validators');
+const { enrichTweet, enrichTweets } = require('../services/feedEnrichment');
 
 /**
  * POST /tweets - Create tweet. Auth required.
@@ -22,7 +22,8 @@ async function createTweet(req, res, next) {
       original_tweet_id: null,
     });
     const tweet = await tweetModel.findById(id);
-    res.status(201).json(tweet);
+    const enriched = await enrichTweet(tweet, req.user.id);
+    res.status(201).json(enriched);
   } catch (e) {
     next(e);
   }
@@ -112,8 +113,13 @@ async function retweet(req, res, next) {
     if (!original) return res.status(404).json({ error: 'Tweet not found' });
     const blocked = await blockModel.isBlocked(req.user.id, original.author_id) || await blockModel.isBlocked(original.author_id, req.user.id);
     if (blocked) return res.status(403).json({ error: 'Cannot retweet this tweet' });
-    const already = await tweetModel.hasRetweeted(req.user.id, originalId);
-    if (already) return res.status(409).json({ error: 'Already retweeted' });
+    const existing = await tweetModel.findRetweetRow(req.user.id, originalId);
+    if (existing) {
+      if (!existing.is_deleted) return res.status(200).json(await tweetModel.findById(existing.id));
+      await tweetModel.restoreRetweet(existing.id);
+      const tweet = await tweetModel.findById(existing.id);
+      return res.status(201).json(tweet);
+    }
     const id = await tweetModel.create({
       author_id: req.user.id,
       content: '', // retweet row can have empty content; original shown via original_tweet_id
@@ -127,7 +133,8 @@ async function retweet(req, res, next) {
 }
 
 /**
- * DELETE /tweets/:id/retweet - Unretweet: soft-delete the retweet row (id = retweet tweet id).
+ * DELETE /tweets/:id/retweet - Unretweet.
+ * Id can be either: (1) retweet row id, or (2) original tweet id (finds and deletes user's retweet).
  */
 async function unretweet(req, res, next) {
   try {
@@ -135,10 +142,21 @@ async function unretweet(req, res, next) {
     if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid tweet id' });
     const tweet = await tweetModel.findById(id);
     if (!tweet) return res.status(404).json({ error: 'Tweet not found' });
-    if (tweet.author_id !== req.user.id || tweet.original_tweet_id == null) {
-      return res.status(403).json({ error: 'Not your retweet' });
+    let retweetId = id;
+    if (tweet.original_tweet_id == null) {
+      const db = require('../config/database');
+      const [rows] = await db.query(
+        'SELECT id FROM tweets WHERE author_id = ? AND original_tweet_id = ? AND is_deleted = FALSE',
+        [req.user.id, id]
+      );
+      if (rows.length === 0) return res.status(404).json({ error: 'Retweet not found' });
+      retweetId = rows[0].id;
+    } else {
+      if (tweet.author_id !== req.user.id) {
+        return res.status(403).json({ error: 'Not your retweet' });
+      }
     }
-    await tweetModel.softDelete(id);
+    await tweetModel.softDelete(retweetId);
     res.status(204).send();
   } catch (e) {
     next(e);
@@ -171,8 +189,8 @@ async function getFeed(req, res, next) {
         params.push(cTime, cId);
       }
     }
-    sql += ' ORDER BY t.created_at DESC, t.id DESC LIMIT ?';
-    params.push(limit + 1);
+    // Use literal LIMIT (validated int) - MySQL 8.0.22+ has a bug with LIMIT placeholder in prepared stmt
+    sql += ` ORDER BY t.created_at DESC, t.id DESC LIMIT ${limit + 1}`;
     const [items] = await db.query(sql, params);
     const hasMore = items.length > limit;
     const page = items.slice(0, limit);
@@ -180,7 +198,27 @@ async function getFeed(req, res, next) {
     const nextCursor = hasMore && last
       ? `${(last.created_at && last.created_at.getTime ? last.created_at.getTime() : new Date(last.created_at).getTime())}_${last.id}`
       : null;
-    res.status(200).json({ feed: page, nextCursor });
+    const enrichedFeed = await enrichTweets(page, userId);
+    res.status(200).json({ feed: enrichedFeed, nextCursor });
+  } catch (e) {
+    next(e);
+  }
+}
+
+/**
+ * GET /tweets/:id - Get single tweet by id (enriched).
+ */
+async function getTweetById(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid tweet id' });
+    const tweet = await tweetModel.findById(id);
+    if (!tweet) return res.status(404).json({ error: 'Tweet not found' });
+    const userId = req.user.id;
+    const blockedSet = await blockModel.getBlockedSet(userId);
+    if (blockedSet.has(tweet.author_id)) return res.status(404).json({ error: 'Tweet not found' });
+    const enriched = await enrichTweet(tweet, userId);
+    res.status(200).json(enriched);
   } catch (e) {
     next(e);
   }
@@ -195,4 +233,5 @@ module.exports = {
   retweet,
   unretweet,
   getFeed,
+  getTweetById,
 };

@@ -47,6 +47,52 @@ async function softDelete(id) {
 }
 
 /**
+ * Get tweets by author (non-deleted, non-retweet originals + retweets authored by user).
+ */
+async function getByAuthorId(authorId, limit = 50, offset = 0) {
+  const lim = Math.min(Math.max(0, parseInt(limit, 10) || 50), 100);
+  const off = Math.max(0, parseInt(offset, 10) || 0);
+  const [rows] = await query(
+    `SELECT * FROM tweets WHERE author_id = ? AND is_deleted = FALSE ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}`,
+    [authorId]
+  );
+  return rows;
+}
+
+/**
+ * Count tweets by author (non-deleted).
+ */
+async function countByAuthorId(authorId) {
+  const [rows] = await query(
+    'SELECT COUNT(*) AS c FROM tweets WHERE author_id = ? AND is_deleted = FALSE',
+    [authorId]
+  );
+  return rows[0]?.c ?? 0;
+}
+
+/**
+ * Find existing retweet row (including soft-deleted) for user + original.
+ */
+async function findRetweetRow(authorId, originalTweetId) {
+  const [rows] = await query(
+    'SELECT id, is_deleted FROM tweets WHERE author_id = ? AND original_tweet_id = ?',
+    [authorId, originalTweetId]
+  );
+  return rows[0] || null;
+}
+
+/**
+ * Restore a soft-deleted retweet (set is_deleted = FALSE).
+ */
+async function restoreRetweet(id) {
+  const [result] = await query(
+    'UPDATE tweets SET is_deleted = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [id]
+  );
+  return result.affectedRows > 0;
+}
+
+/**
  * Check if user has already retweeted this original tweet.
  */
 async function hasRetweeted(authorId, originalTweetId) {
@@ -63,4 +109,8 @@ module.exports = {
   update,
   softDelete,
   hasRetweeted,
+  findRetweetRow,
+  restoreRetweet,
+  getByAuthorId,
+  countByAuthorId,
 };

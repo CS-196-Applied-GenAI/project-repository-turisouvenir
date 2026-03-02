@@ -13,7 +13,7 @@ async function create({ user_id, tweet_id, content }) {
 
 async function findById(id) {
   const [rows] = await query(
-    'SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.id WHERE c.id = ?',
+    'SELECT c.*, u.username, u.profile_picture_url FROM comments c JOIN users u ON c.user_id = u.id WHERE c.id = ?',
     [id]
   );
   return rows[0] || null;
@@ -32,19 +32,23 @@ async function deleteById(id) {
  * @param {number} offset
  */
 async function getByTweetId(tweetId, blockedUserIds, limit = 50, offset = 0) {
+  const lim = Math.min(Math.max(0, parseInt(limit, 10) || 50), 100);
+  const off = Math.max(0, parseInt(offset, 10) || 0);
   if (blockedUserIds.size > 0) {
     const [rows] = await query(
-      `SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.id
+      `SELECT c.*, u.username, u.profile_picture_url
+       FROM comments c JOIN users u ON c.user_id = u.id
        WHERE c.tweet_id = ? AND c.user_id NOT IN (?)
-       ORDER BY c.created_at ASC LIMIT ? OFFSET ?`,
-      [tweetId, [...blockedUserIds], limit, offset]
+       ORDER BY c.created_at ASC LIMIT ${lim} OFFSET ${off}`,
+      [tweetId, [...blockedUserIds]]
     );
     return rows;
   }
   const [rows] = await query(
-    `SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.id
-     WHERE c.tweet_id = ? ORDER BY c.created_at ASC LIMIT ? OFFSET ?`,
-    [tweetId, limit, offset]
+    `SELECT c.*, u.username, u.profile_picture_url
+     FROM comments c JOIN users u ON c.user_id = u.id
+     WHERE c.tweet_id = ? ORDER BY c.created_at ASC LIMIT ${lim} OFFSET ${off}`,
+    [tweetId]
   );
   return rows;
 }

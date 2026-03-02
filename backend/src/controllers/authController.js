@@ -37,7 +37,17 @@ async function register(req, res, next) {
       bio: bio != null ? String(bio).trim() : null,
     });
     const user = await userModel.findById(id);
-    res.status(201).json({ user: toPublicUser(user) });
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn }
+    );
+    const payload = jwt.verify(token, config.jwt.secret);
+    res.status(201).json({
+      token,
+      user: toPublicUser(user),
+      expiresAt: payload.exp,
+    });
   } catch (err) {
     next(err);
   }

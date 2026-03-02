@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Heart, Repeat2, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router';
-import { Chirp } from '../services/mockData';
+import type { Chirp } from '../api/feed';
 import { UserAvatar } from './UserAvatar';
 import { formatDistanceToNow } from 'date-fns';
 
+export type ChirpDisplay = Chirp & { id: string | number };
+
 interface ChirpCardProps {
-  chirp: Chirp;
+  chirp: ChirpDisplay;
   onLike: (id: string) => void;
   onRetweet: (id: string) => void;
   onComment: (id: string) => void;
@@ -28,7 +30,7 @@ export const ChirpCard = React.forwardRef<HTMLDivElement, ChirpCardProps>(({
     e.stopPropagation();
     if (isLiking) return;
     setIsLiking(true);
-    await onLike(chirp.id);
+    await onLike(String(chirp.id));
     setTimeout(() => setIsLiking(false), 500);
   };
 
@@ -36,16 +38,16 @@ export const ChirpCard = React.forwardRef<HTMLDivElement, ChirpCardProps>(({
     e.stopPropagation();
     if (isRetweeting) return;
     setIsRetweeting(true);
-    await onRetweet(chirp.id);
+    await onRetweet(String(chirp.id));
     setTimeout(() => setIsRetweeting(false), 500);
   };
 
   const handleComment = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onComment(chirp.id);
+    onComment(String(chirp.id));
   };
 
-  const renderChirpContent = (chirpData: Chirp, isNested: boolean = false) => (
+  const renderChirpContent = (chirpData: ChirpDisplay, isNested: boolean = false) => (
     <div className={`${isNested ? 'mt-3 p-4 rounded-2xl border border-border/50 bg-background/30' : ''}`}>
       <div className="flex gap-3">
         <Link to={`/user/${chirpData.author.username}`} onClick={(e) => e.stopPropagation()}>

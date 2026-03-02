@@ -8,6 +8,7 @@ const { requireAuth } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+router.get('/:id', requireAuth, tweetController.getTweetById);
 router.post('/', requireAuth, tweetController.createTweet);
 router.put('/:id', requireAuth, tweetController.updateTweet);
 router.delete('/:id', requireAuth, tweetController.deleteTweet);

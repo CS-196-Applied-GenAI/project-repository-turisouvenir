@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { Edit, LogOut, Camera, Trophy, Flame, Award, Sparkles, ArrowLeft } from 'lucide-react';
@@ -9,26 +9,64 @@ import { FollowListModal } from '../components/FollowListModal';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
+import {
+  getUserById,
+  updateMe,
+  uploadProfilePicture,
+  type UserProfile,
+} from '../api/users';
 import { toast } from 'sonner';
 
 export const ProfileScreen: React.FC = () => {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
 
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [showFollowModal, setShowFollowModal] = useState(false);
   const [followModalType, setFollowModalType] = useState<'followers' | 'following'>('followers');
 
-  if (!user) {
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user?.id]);
 
-  const handleSave = () => {
-    updateUser({ username, bio });
-    setIsEditing(false);
-    toast.success('Profile updated! ✨');
+  const loadProfile = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const data = await getUserById(user.id);
+      setProfile(data);
+      setUsername(data.username);
+      setBio(data.bio || '');
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to load profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!user) return null;
+
+  const handleSave = async () => {
+    try {
+      const updated = await updateMe({ username, bio });
+      updateUser({
+        username: updated.username,
+        bio: updated.bio,
+      });
+      setProfile((p) => (p ? { ...p, ...updated } : updated));
+      setIsEditing(false);
+      toast.success('Profile updated! ✨');
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to update profile');
+    }
   };
 
   const handleLogout = () => {
@@ -37,33 +75,29 @@ export const ProfileScreen: React.FC = () => {
     toast.success('See you later! 👋');
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be smaller than 5MB');
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be smaller than 2MB');
       return;
     }
 
-    // Check file type
     if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
+      toast.error('Please upload an image file (jpg, png, webp)');
       return;
     }
 
-    // Read file and convert to data URL
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const dataUrl = reader.result as string;
-      updateUser({ profile_picture_url: dataUrl });
+    try {
+      const updated = await uploadProfilePicture(file);
+      updateUser({ profile_picture_url: updated.profile_picture_url ?? undefined });
+      setProfile((p) => (p ? { ...p, profile_picture_url: updated.profile_picture_url } : p));
       toast.success('Profile picture updated! 📸');
-    };
-    reader.onerror = () => {
-      toast.error('Failed to upload image');
-    };
-    reader.readAsDataURL(file);
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to upload image');
+    }
   };
 
   const badges = [
@@ -72,19 +106,25 @@ export const ProfileScreen: React.FC = () => {
     { id: 'social_butterfly', name: 'Social Butterfly', icon: Award, color: '#FB7185' },
   ];
 
-  const userBadges = badges.filter(b => user.badges.includes(b.id));
+  const userBadges = badges.filter((b) => (profile?.badges || user.badges || []).includes(b.id));
+  const displayUser = profile || user;
+  const xpForNextLevel = ((displayUser?.level ?? 1) + 1) * 500;
+  const xpProgress = ((displayUser?.xp ?? 0) % 500) / 5;
 
-  // Calculate level progress
-  const xpForNextLevel = (user.level + 1) * 500;
-  const xpProgress = (user.xp % 500) / 5;
+  if (isLoading && !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0 lg:pl-64">
-      {/* Header */}
-      <div 
+      <div
         className="relative h-48"
         style={{
-          background: 'linear-gradient(135deg, #8B5CF6 0%, #FB7185 50%, #60A5FA 100%)'
+          background: 'linear-gradient(135deg, #8B5CF6 0%, #FB7185 50%, #60A5FA 100%)',
         }}
       >
         <div className="absolute top-4 left-4">
@@ -99,15 +139,14 @@ export const ProfileScreen: React.FC = () => {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 -mt-16 relative z-10">
-        {/* Profile picture */}
         <div className="flex justify-between items-end mb-6">
           <div className="relative">
             <UserAvatar
               src={user.profile_picture_url}
               username={user.username}
               size="large"
-              level={user.level}
-              streak={user.streak}
+              level={displayUser?.level ?? user.level}
+              streak={displayUser?.streak ?? user.streak}
               showStreak
             />
             <input
@@ -132,7 +171,7 @@ export const ProfileScreen: React.FC = () => {
               onClick={() => setIsEditing(true)}
               className="rounded-full px-6"
               style={{
-                background: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)'
+                background: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
               }}
             >
               <Edit className="w-4 h-4 mr-2" />
@@ -141,7 +180,6 @@ export const ProfileScreen: React.FC = () => {
           )}
         </div>
 
-        {/* Profile info */}
         <AnimatePresence mode="wait">
           {isEditing ? (
             <motion.div
@@ -173,13 +211,17 @@ export const ProfileScreen: React.FC = () => {
                   onClick={handleSave}
                   className="flex-1 rounded-xl"
                   style={{
-                    background: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)'
+                    background: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
                   }}
                 >
                   Save
                 </Button>
                 <Button
-                  onClick={() => setIsEditing(false)}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setUsername(profile?.username ?? user.username);
+                    setBio(profile?.bio ?? user.bio ?? '');
+                  }}
                   variant="outline"
                   className="flex-1 rounded-xl border-border/50"
                 >
@@ -196,32 +238,28 @@ export const ProfileScreen: React.FC = () => {
               className="mb-6"
             >
               <h2 className="text-2xl font-bold">@{user.username}</h2>
-              <p className="text-muted-foreground mt-2">{user.bio}</p>
+              <p className="text-muted-foreground mt-2">{user.bio || 'No bio yet'}</p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Stats cards */}
         <div className="grid grid-cols-2 gap-4 mb-6">
-          {/* XP and Level */}
           <motion.div
             whileHover={{ scale: 1.02 }}
             className="p-4 rounded-2xl border border-border/50"
             style={{
               background: 'rgba(26, 18, 41, 0.5)',
-              backdropFilter: 'blur(10px)'
+              backdropFilter: 'blur(10px)',
             }}
           >
             <div className="flex items-center gap-2 mb-3">
               <Trophy className="w-5 h-5 text-primary" />
               <span className="text-sm text-muted-foreground">Level</span>
             </div>
-            <div className="text-3xl font-bold">
-              {user.level}
-            </div>
+            <div className="text-3xl font-bold">{displayUser?.level ?? user.level}</div>
             <div className="mt-3">
               <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                <span>{user.xp} XP</span>
+                <span>{displayUser?.xp ?? user.xp} XP</span>
                 <span>{xpForNextLevel} XP</span>
               </div>
               <div className="h-2 bg-background/50 rounded-full overflow-hidden">
@@ -230,20 +268,19 @@ export const ProfileScreen: React.FC = () => {
                   animate={{ width: `${xpProgress}%` }}
                   className="h-full rounded-full"
                   style={{
-                    background: 'linear-gradient(90deg, #8B5CF6 0%, #A78BFA 100%)'
+                    background: 'linear-gradient(90deg, #8B5CF6 0%, #A78BFA 100%)',
                   }}
                 />
               </div>
             </div>
           </motion.div>
 
-          {/* Streak */}
           <motion.div
             whileHover={{ scale: 1.02 }}
             className="p-4 rounded-2xl border border-border/50"
             style={{
               background: 'rgba(26, 18, 41, 0.5)',
-              backdropFilter: 'blur(10px)'
+              backdropFilter: 'blur(10px)',
             }}
           >
             <div className="flex items-center gap-2 mb-3">
@@ -251,16 +288,13 @@ export const ProfileScreen: React.FC = () => {
               <span className="text-sm text-muted-foreground">Streak</span>
             </div>
             <div className="text-3xl font-bold">
-              {user.streak}
+              {displayUser?.streak ?? user.streak}
               <span className="text-lg text-muted-foreground ml-1">days</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Keep it going! 🔥
-            </p>
+            <p className="text-xs text-muted-foreground mt-2">Keep it going! 🔥</p>
           </motion.div>
         </div>
 
-        {/* Badges */}
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Award className="w-5 h-5 text-accent" />
@@ -279,14 +313,14 @@ export const ProfileScreen: React.FC = () => {
                   className="p-4 rounded-2xl border border-border/50 flex flex-col items-center text-center"
                   style={{
                     background: 'rgba(26, 18, 41, 0.5)',
-                    backdropFilter: 'blur(10px)'
+                    backdropFilter: 'blur(10px)',
                   }}
                 >
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center mb-2"
                     style={{
                       background: `linear-gradient(135deg, ${badge.color} 0%, ${badge.color}90 100%)`,
-                      boxShadow: `0 4px 15px ${badge.color}40`
+                      boxShadow: `0 4px 15px ${badge.color}40`,
                     }}
                   >
                     <Icon className="w-6 h-6 text-white" />
@@ -298,21 +332,22 @@ export const ProfileScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Activity stats */}
-        <div 
+        <div
           className="p-6 rounded-2xl border border-border/50 mb-6"
           style={{
             background: 'rgba(26, 18, 41, 0.5)',
-            backdropFilter: 'blur(10px)'
+            backdropFilter: 'blur(10px)',
           }}
         >
           <h3 className="text-lg font-semibold mb-4">Activity</h3>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <div className="text-2xl font-bold text-primary">127</div>
+              <div className="text-2xl font-bold text-primary">
+                {profile?.chirps_count ?? 0}
+              </div>
               <div className="text-sm text-muted-foreground">Chirps</div>
             </div>
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="cursor-pointer"
@@ -321,10 +356,14 @@ export const ProfileScreen: React.FC = () => {
                 setShowFollowModal(true);
               }}
             >
-              <div className="text-2xl font-bold text-secondary">342</div>
-              <div className="text-sm text-muted-foreground hover:text-secondary transition-colors">Followers</div>
+              <div className="text-2xl font-bold text-secondary">
+                {profile?.followers_count ?? 0}
+              </div>
+              <div className="text-sm text-muted-foreground hover:text-secondary transition-colors">
+                Followers
+              </div>
             </motion.div>
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="cursor-pointer"
@@ -333,13 +372,16 @@ export const ProfileScreen: React.FC = () => {
                 setShowFollowModal(true);
               }}
             >
-              <div className="text-2xl font-bold text-accent">189</div>
-              <div className="text-sm text-muted-foreground hover:text-accent transition-colors">Following</div>
+              <div className="text-2xl font-bold text-accent">
+                {profile?.following_count ?? 0}
+              </div>
+              <div className="text-sm text-muted-foreground hover:text-accent transition-colors">
+                Following
+              </div>
             </motion.div>
           </div>
         </div>
 
-        {/* Logout button */}
         <Button
           onClick={handleLogout}
           variant="outline"

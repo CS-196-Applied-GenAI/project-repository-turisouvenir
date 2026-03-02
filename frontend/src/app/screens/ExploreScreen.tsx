@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { Search, TrendingUp, Hash, Users, UserPlus, UserMinus } from 'lucide-react';
@@ -6,10 +6,52 @@ import { BottomNav } from '../components/BottomNav';
 import { UserAvatar } from '../components/UserAvatar';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
-import { toggleFollow } from '../services/mockData';
+import { getSuggestedUsers, follow, unfollow } from '../api/users';
+import type { UserProfile } from '../api/users';
 import { toast } from 'sonner';
 
 export const ExploreScreen: React.FC = () => {
+  const [suggestedUsers, setSuggestedUsers] = useState<UserProfile[]>([]);
+  const [followStates, setFollowStates] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSuggested();
+  }, []);
+
+  const loadSuggested = async () => {
+    setLoading(true);
+    try {
+      const users = await getSuggestedUsers(10);
+      setSuggestedUsers(users);
+      const states: Record<string, boolean> = {};
+      users.forEach((u) => {
+        states[String(u.id)] = u.is_following ?? false;
+      });
+      setFollowStates(states);
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to load suggestions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFollow = async (targetUser: UserProfile) => {
+    try {
+      const result = followStates[String(targetUser.id)]
+        ? await unfollow(String(targetUser.id))
+        : await follow(String(targetUser.id));
+      setFollowStates((prev) => ({ ...prev, [String(targetUser.id)]: result.is_following }));
+      toast.success(
+        result.is_following ? `Following @${targetUser.username}! 🎉` : `Unfollowed @${targetUser.username}`
+      );
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      toast.error(e?.error || 'Failed to update follow');
+    }
+  };
+
   const trendingTopics = [
     { tag: 'GenZ', chirps: '12.5K' },
     { tag: 'Gaming', chirps: '8.3K' },
@@ -17,51 +59,13 @@ export const ExploreScreen: React.FC = () => {
     { tag: 'MusicVibes', chirps: '4.2K' },
   ];
 
-  const suggestedUsers = [
-    {
-      id: '2',
-      username: 'cosmicvibes',
-      bio: 'Living for the cosmic vibes ✨',
-      level: 8,
-      profile_picture_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=cosmic'
-    },
-    {
-      id: '3',
-      username: 'pixelpanda',
-      bio: 'Pixel artist | Gaming enthusiast 🎮',
-      level: 12,
-      profile_picture_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=pixel'
-    },
-    {
-      id: '4',
-      username: 'neonwarrior',
-      bio: 'Warrior of the neon realm 💜',
-      level: 6,
-      profile_picture_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=neon'
-    },
-  ];
-
-  const [followStates, setFollowStates] = useState<Record<string, boolean>>({});
-
-  const handleFollow = async (userId: string, username: string) => {
-    const result = await toggleFollow(userId);
-    setFollowStates(prev => ({ ...prev, [userId]: result.is_following }));
-    
-    if (result.is_following) {
-      toast.success(`Following @${username}! 🎉`);
-    } else {
-      toast.success(`Unfollowed @${username}`);
-    }
-  };
-
   return (
     <div className="min-h-screen pb-20 lg:pb-0 lg:pl-64">
-      {/* Header */}
-      <div 
+      <div
         className="sticky top-0 z-40 border-b border-border/50"
         style={{
           background: 'rgba(15, 10, 30, 0.8)',
-          backdropFilter: 'blur(20px)'
+          backdropFilter: 'blur(20px)',
         }}
       >
         <div className="max-w-2xl mx-auto px-4 py-4">
@@ -76,9 +80,7 @@ export const ExploreScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-6">
-        {/* Trending section */}
         <div className="mb-8">
           <h2 className="flex items-center gap-2 mb-4">
             <TrendingUp className="w-5 h-5 text-accent" />
@@ -95,7 +97,7 @@ export const ExploreScreen: React.FC = () => {
                 className="p-4 rounded-2xl border border-border/50 cursor-pointer"
                 style={{
                   background: 'rgba(26, 18, 41, 0.5)',
-                  backdropFilter: 'blur(10px)'
+                  backdropFilter: 'blur(10px)',
                 }}
               >
                 <div className="flex items-center justify-between">
@@ -103,9 +105,7 @@ export const ExploreScreen: React.FC = () => {
                     <Hash className="w-5 h-5 text-primary" />
                     <div>
                       <div className="font-semibold">#{topic.tag}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {topic.chirps} chirps
-                      </div>
+                      <div className="text-sm text-muted-foreground">{topic.chirps} chirps</div>
                     </div>
                   </div>
                   <TrendingUp className="w-5 h-5 text-secondary" />
@@ -115,69 +115,79 @@ export const ExploreScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Suggested users */}
         <div>
           <h2 className="flex items-center gap-2 mb-4">
             <Users className="w-5 h-5 text-secondary" />
             <span>Who to Follow</span>
           </h2>
-          <div className="space-y-3">
-            {suggestedUsers.map((user, index) => (
-              <motion.div
-                key={user.username}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="p-4 rounded-2xl border border-border/50"
-                style={{
-                  background: 'rgba(26, 18, 41, 0.5)',
-                  backdropFilter: 'blur(10px)'
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <Link to={`/user/${user.username}`} className="flex items-start gap-3 flex-1 min-w-0">
-                    <UserAvatar
-                      src={user.profile_picture_url}
-                      username={user.username}
-                      size="medium"
-                      level={user.level}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold hover:text-primary transition-colors">
-                        @{user.username}
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {suggestedUsers.map((user, index) => (
+                <motion.div
+                  key={user.username}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="p-4 rounded-2xl border border-border/50"
+                  style={{
+                    background: 'rgba(26, 18, 41, 0.5)',
+                    backdropFilter: 'blur(10px)',
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <Link to={`/user/${user.username}`} className="flex items-start gap-3 flex-1 min-w-0">
+                      <UserAvatar
+                        src={user.profile_picture_url ?? undefined}
+                        username={user.username}
+                        size="medium"
+                        level={user.level ?? 1}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold hover:text-primary transition-colors">
+                          @{user.username}
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {user.bio || 'No bio'}
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                        {user.bio}
-                      </div>
-                    </div>
-                  </Link>
-                  <Button
-                    size="sm"
-                    className="rounded-full px-4 shrink-0"
-                    style={{
-                      background: followStates[user.id] 
-                        ? 'rgba(139, 92, 246, 0.2)' 
-                        : 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
-                      border: followStates[user.id] ? '1px solid rgba(139, 92, 246, 0.5)' : 'none'
-                    }}
-                    onClick={() => handleFollow(user.id, user.username)}
-                  >
-                    {followStates[user.id] ? (
-                      <>
-                        <UserMinus className="w-4 h-4 mr-1" />
-                        Following
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="w-4 h-4 mr-1" />
-                        Follow
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                    </Link>
+                    <Button
+                      size="sm"
+                      className="rounded-full px-4 shrink-0"
+                      style={{
+                        background: followStates[String(user.id)]
+                          ? 'rgba(139, 92, 246, 0.2)'
+                          : 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
+                        border: followStates[String(user.id)]
+                          ? '1px solid rgba(139, 92, 246, 0.5)'
+                          : 'none',
+                      }}
+                      onClick={() => handleFollow(user)}
+                    >
+                      {followStates[String(user.id)] ? (
+                        <>
+                          <UserMinus className="w-4 h-4 mr-1" />
+                          Following
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-4 h-4 mr-1" />
+                          Follow
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+              {suggestedUsers.length === 0 && !loading && (
+                <p className="text-center py-8 text-muted-foreground">No suggestions right now</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

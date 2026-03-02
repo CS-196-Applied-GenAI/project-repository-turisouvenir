@@ -25,7 +25,21 @@ async function createComment(req, res, next) {
       tweet_id: tweetId,
       content: content.trim(),
     });
-    const comment = await commentModel.findById(id);
+    const r = await commentModel.findById(id);
+    if (!r) return res.status(500).json({ error: 'Failed to create comment' });
+    const comment = {
+      id: r.id,
+      author_id: r.user_id,
+      author: {
+        id: r.user_id,
+        username: r.username,
+        profile_picture_url: r.profile_picture_url ?? null,
+        level: 1,
+      },
+      content: r.content,
+      created_at: r.created_at,
+      tweet_id: r.tweet_id,
+    };
     res.status(201).json(comment);
   } catch (e) {
     next(e);
@@ -44,7 +58,20 @@ async function getComments(req, res, next) {
     const blockedSet = await blockModel.getBlockedSet(req.user.id);
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
     const offset = parseInt(req.query.offset, 10) || 0;
-    const comments = await commentModel.getByTweetId(tweetId, blockedSet, limit, offset);
+    const rows = await commentModel.getByTweetId(tweetId, blockedSet, limit, offset);
+    const comments = rows.map((r) => ({
+      id: r.id,
+      author_id: r.user_id,
+      author: {
+        id: r.user_id,
+        username: r.username,
+        profile_picture_url: r.profile_picture_url ?? null,
+        level: 1,
+      },
+      content: r.content,
+      created_at: r.created_at,
+      tweet_id: r.tweet_id,
+    }));
     res.status(200).json({ comments });
   } catch (e) {
     next(e);

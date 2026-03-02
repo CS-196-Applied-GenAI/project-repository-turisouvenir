@@ -35,4 +35,13 @@ async function getFollowingIds(userId) {
   return rows.map((r) => r.following_id);
 }
 
-module.exports = { add, remove, exists, getFollowingIds };
+/** Get list of user ids that follow this user. */
+async function getFollowerIds(userId) {
+  const [rows] = await query(
+    'SELECT follower_id FROM follows WHERE following_id = ?',
+    [userId]
+  );
+  return rows.map((r) => r.follower_id);
+}
+
+module.exports = { add, remove, exists, getFollowingIds, getFollowerIds };

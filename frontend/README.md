@@ -42,13 +42,17 @@ A bold, playful, and gamified micro-blogging platform designed for Gen Z with vi
 - Loading skeletons with shimmer effects
 - Achievement notifications
 
-## 🚀 Mock Data
+## 🚀 API Integration
 
-The app uses mock data services that simulate the provided API structure:
-- `/auth/*` - Authentication endpoints
-- `/users/*` - User management
-- `/tweets/*` - Chirp CRUD operations
-- `/feed` - Infinite scroll feed with cursor pagination
+The app is fully integrated with the Chirper backend API:
+- **Auth**: Login, register, logout with JWT
+- **Feed**: Infinite scroll with cursor pagination
+- **Chirps**: Create, like, retweet, comment
+- **Users**: Profile, follow/unfollow, block/unblock, followers/following
+- **Explore**: Suggested users to follow
+- **Notifications**: Placeholder (returns empty list)
+
+Set `VITE_API_URL` in `.env` (default: `http://localhost:3000`).
 
 ## 📱 Screens
 
@@ -77,6 +81,10 @@ The app uses mock data services that simulate the provided API structure:
 - Sonner for toast notifications
 - date-fns for date formatting
 
-## 📝 Notes
+## 🏃 Running the App
 
-This is a frontend-only demo with mock data. To connect to a real backend, replace the mock data services in `/src/app/services/mockData.ts` with actual API calls to the endpoints described in the project overview.
+1. **Backend** (required): From project root, run `cd backend && npm run dev`
+2. **Frontend**: Run `cd frontend && npm run dev`
+3. Open http://localhost:5173 in your browser
+
+Ensure MySQL is running and the `chirper` database exists with the schema applied.
