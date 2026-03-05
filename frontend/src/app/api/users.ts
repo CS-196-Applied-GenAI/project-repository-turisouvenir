@@ -3,6 +3,7 @@
  */
 
 import { apiFetch } from './client';
+import { getBaseUrl } from './baseUrl';
 import type { Chirp } from './feed';
 
 export interface UserProfile {
@@ -51,7 +52,7 @@ export async function uploadProfilePicture(file: File): Promise<UserProfile> {
   const formData = new FormData();
   formData.append('file', file);
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/users/me/profile-picture`,
+    `${getBaseUrl()}/users/me/profile-picture`,
     {
       method: 'POST',
       headers: {

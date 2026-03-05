@@ -1,9 +1,8 @@
 /**
  * API client for Chirper backend.
- * Base URL: VITE_API_URL or http://localhost:3000
+ * Base URL from getBaseUrl() (VITE_API_URL or http://localhost:3000).
  */
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { getBaseUrl } from './baseUrl';
 
 function getToken(): string | null {
   return localStorage.getItem('chirper_token');
@@ -27,7 +26,7 @@ export async function apiFetch<T>(
   options: RequestInit & { skipAuth?: boolean } = {}
 ): Promise<T> {
   const { skipAuth, ...init } = options;
-  const url = path.startsWith('http') ? path : `${BASE_URL}${path}`;
+  const url = path.startsWith('http') ? path : `${getBaseUrl()}${path}`;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -66,7 +65,7 @@ export async function apiFetchMultipart<T>(
   path: string,
   formData: FormData
 ): Promise<T> {
-  const url = path.startsWith('http') ? path : `${BASE_URL}${path}`;
+  const url = path.startsWith('http') ? path : `${getBaseUrl()}${path}`;
   const token = getToken();
 
   const headers: Record<string, string> = {};
