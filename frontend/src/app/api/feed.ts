@@ -24,6 +24,8 @@ export interface Chirp {
   is_retweeted: boolean;
   original_tweet_id?: number;
   original_tweet?: Chirp;
+  image_1_url?: string | null;
+  image_2_url?: string | null;
 }
 
 export interface FeedResponse {

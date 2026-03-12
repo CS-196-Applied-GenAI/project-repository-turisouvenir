@@ -58,7 +58,7 @@ export const ProfileScreen: React.FC = () => {
       const updated = await updateMe({ username, bio });
       updateUser({
         username: updated.username,
-        bio: updated.bio,
+        bio: updated.bio ?? undefined,
       });
       setProfile((p) => (p ? { ...p, ...updated } : updated));
       setIsEditing(false);
@@ -145,9 +145,6 @@ export const ProfileScreen: React.FC = () => {
               src={user.profile_picture_url}
               username={user.username}
               size="large"
-              level={displayUser?.level ?? user.level}
-              streak={displayUser?.streak ?? user.streak}
-              showStreak
             />
             <input
               type="file"

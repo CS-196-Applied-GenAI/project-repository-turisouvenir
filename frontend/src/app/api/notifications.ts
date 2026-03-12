@@ -6,7 +6,7 @@ import { apiFetch } from './client';
 
 export interface Notification {
   id: string;
-  type: 'like' | 'retweet' | 'comment' | 'follow';
+  type: 'chirp' | 'like' | 'retweet' | 'comment' | 'follow';
   user: {
     username: string;
     profile_picture_url: string;
@@ -14,6 +14,7 @@ export interface Notification {
   };
   content?: string;
   timestamp: string;
+  tweet_id?: number;
 }
 
 export interface NotificationsResponse {

@@ -4,25 +4,69 @@
 const tweetModel = require('../models/tweetModel');
 const likeModel = require('../models/likeModel');
 const blockModel = require('../models/blockModel');
-const userModel = require('../models/userModel');
+const followModel = require('../models/followModel');
+const notificationModel = require('../models/notificationModel');
+const s3Service = require('../services/s3Service');
 const { validateTweetContent } = require('../utils/validators');
 const { enrichTweet, enrichTweets } = require('../services/feedEnrichment');
 
 /**
- * POST /tweets - Create tweet. Auth required.
+ * POST /tweets - Create tweet. Auth required. Multipart: content (required), image1, image2 (optional, max 2 total).
  */
 async function createTweet(req, res, next) {
   try {
-    const { content } = req.body;
+    const content = (req.body && req.body.content) || '';
     const err = validateTweetContent(content);
     if (err) return res.status(400).json({ error: err });
+
+    let image_1_url = null;
+    let image_2_url = null;
+
+    const files = req.files || {};
+    const img1 = Array.isArray(files.image1) ? files.image1[0] : files.image1;
+    const img2 = Array.isArray(files.image2) ? files.image2[0] : files.image2;
+
+    if (img1) {
+      const val1 = s3Service.validateFile(img1);
+      if (!val1.ok) return res.status(400).json({ error: val1.error });
+      try {
+        image_1_url = await s3Service.uploadTweetImage(img1.buffer, req.user.id, 1, img1.mimetype);
+      } catch (e) {
+        console.error('S3 upload image1 failed:', e.message);
+      }
+    }
+    if (img2) {
+      const val2 = s3Service.validateFile(img2);
+      if (!val2.ok) return res.status(400).json({ error: val2.error });
+      try {
+        image_2_url = await s3Service.uploadTweetImage(img2.buffer, req.user.id, 2, img2.mimetype);
+      } catch (e) {
+        console.error('S3 upload image2 failed:', e.message);
+      }
+    }
+
     const id = await tweetModel.create({
       author_id: req.user.id,
       content: content.trim(),
       original_tweet_id: null,
+      image_1_url,
+      image_2_url,
     });
     const tweet = await tweetModel.findById(id);
     const enriched = await enrichTweet(tweet, req.user.id);
+    // Notify followers when someone they follow posts (fire-and-forget; don't fail tweet)
+    try {
+      const followerIds = await followModel.getFollowerIds(req.user.id);
+      const contentPreview = content.trim().slice(0, 200);
+      await notificationModel.createForMany(followerIds, {
+        actorId: req.user.id,
+        type: 'chirp',
+        tweetId: id,
+        content: contentPreview,
+      });
+    } catch (err) {
+      console.error('Notification creation failed (is notifications table created?):', err.message);
+    }
     res.status(201).json(enriched);
   } catch (e) {
     next(e);

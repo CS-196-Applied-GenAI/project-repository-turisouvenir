@@ -6,12 +6,12 @@ const { query } = require('../config/database');
 
 /**
  * Create a tweet. Returns insertId.
- * @param {{ author_id: number, content: string, original_tweet_id?: number }}
+ * @param {{ author_id: number, content: string, original_tweet_id?: number, image_1_url?: string, image_2_url?: string }}
  */
-async function create({ author_id, content, original_tweet_id = null }) {
+async function create({ author_id, content, original_tweet_id = null, image_1_url = null, image_2_url = null }) {
   const [result] = await query(
-    'INSERT INTO tweets (author_id, content, original_tweet_id) VALUES (?, ?, ?)',
-    [author_id, content.trim(), original_tweet_id]
+    'INSERT INTO tweets (author_id, content, original_tweet_id, image_1_url, image_2_url) VALUES (?, ?, ?, ?, ?)',
+    [author_id, content.trim(), original_tweet_id, image_1_url, image_2_url]
   );
   return result.insertId;
 }

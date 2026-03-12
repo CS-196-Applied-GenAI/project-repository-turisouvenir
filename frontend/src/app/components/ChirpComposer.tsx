@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Sparkles, X, ImagePlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 
 interface ChirpComposerProps {
-  onSubmit: (content: string) => Promise<void>;
+  onSubmit: (content: string, images?: { image1?: File; image2?: File }) => Promise<void>;
   onClose?: () => void;
   placeholder?: string;
   compact?: boolean;
 }
+
+const MAX_IMAGES = 2;
 
 export const ChirpComposer: React.FC<ChirpComposerProps> = ({
   onSubmit,
@@ -18,7 +20,10 @@ export const ChirpComposer: React.FC<ChirpComposerProps> = ({
   compact = false
 }) => {
   const [content, setContent] = useState('');
+  const [images, setImages] = useState<{ image1?: File; image2?: File }>({});
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const maxLength = 280;
   const remaining = maxLength - content.length;
@@ -38,13 +43,48 @@ export const ChirpComposer: React.FC<ChirpComposerProps> = ({
     return '#A78BFA';
   };
 
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const valid = files.filter((f) => /^image\/(jpe?g|png|webp)$/i.test(f.type)).slice(0, MAX_IMAGES);
+    if (valid.length === 0) return;
+    const next: { image1?: File; image2?: File } = {};
+    const previews: string[] = [];
+    valid.forEach((f, i) => {
+      if (i === 0) next.image1 = f;
+      else next.image2 = f;
+      previews.push(URL.createObjectURL(f));
+    });
+    setImages(next);
+    setImagePreviews(previews);
+    e.target.value = '';
+  };
+
+  const removeImage = (idx: number) => {
+    if (idx === 0) {
+      setImages((prev) => (prev.image2 ? { image2: prev.image2 } : {}));
+      setImagePreviews((p) => {
+        URL.revokeObjectURL(p[0]);
+        return p.slice(1);
+      });
+    } else {
+      setImages((prev) => (prev.image1 ? { image1: prev.image1 } : {}));
+      setImagePreviews((p) => {
+        URL.revokeObjectURL(p[1]);
+        return [p[0]];
+      });
+    }
+  };
+
   const handleSubmit = async () => {
     if (!content.trim() || content.length > maxLength || isSubmitting) return;
-    
+
     setIsSubmitting(true);
     try {
-      await onSubmit(content);
+      await onSubmit(content, Object.keys(images).length ? images : undefined);
       setContent('');
+      setImages({});
+      imagePreviews.forEach(URL.revokeObjectURL);
+      setImagePreviews([]);
     } finally {
       setIsSubmitting(false);
     }
@@ -83,8 +123,53 @@ export const ChirpComposer: React.FC<ChirpComposerProps> = ({
         className="min-h-[120px] resize-none bg-input-background border-border/50 focus:border-primary/50 rounded-2xl text-base placeholder:text-muted-foreground"
       />
 
+      <AnimatePresence>
+        {imagePreviews.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex gap-2 mt-3 flex-wrap"
+          >
+            {imagePreviews.map((url, idx) => (
+              <motion.div
+                key={url}
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                className="relative w-20 h-20 rounded-xl overflow-hidden border border-border/50"
+              >
+                <img src={url} alt="" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeImage(idx)}
+                  className="absolute top-1 right-1 p-1 rounded-full bg-background/80 hover:bg-background"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex items-center justify-between mt-4">
         <div className="flex items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="hidden"
+            onChange={handleImagePick}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={imagePreviews.length >= MAX_IMAGES}
+            className="p-2 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ImagePlus className="w-5 h-5" />
+          </button>
           {/* Character counter with circular progress */}
           <div className="relative w-12 h-12">
             <svg className="w-12 h-12 transform -rotate-90">

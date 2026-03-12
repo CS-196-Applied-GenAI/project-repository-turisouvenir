@@ -75,11 +75,15 @@ export const FeedScreen: React.FC = () => {
     }
   };
 
-  const handleCreateChirp = async (content: string) => {
+  const handleCreateChirp = async (content: string, images?: { image1?: File; image2?: File }) => {
     if (!user) return;
 
     try {
-      const newChirp = await createTweet(content);
+      const newChirp = await createTweet(
+        images && (images.image1 || images.image2)
+          ? { content, image1: images.image1, image2: images.image2 }
+          : content
+      );
       setChirps((prev) => [chirpToDisplay(newChirp), ...prev]);
       setShowComposer(false);
       toast.success('Chirped! 🎉');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { Bell, Heart, Repeat2, MessageCircle, UserPlus } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
@@ -11,6 +11,7 @@ import { formatDistanceToNow } from 'date-fns';
 export const NotificationsScreen: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadNotifications();
@@ -30,6 +31,8 @@ export const NotificationsScreen: React.FC = () => {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'chirp':
+        return <Bell className="w-5 h-5 text-primary" />;
       case 'like':
         return <Heart className="w-5 h-5 fill-secondary text-secondary" />;
       case 'retweet':
@@ -45,6 +48,8 @@ export const NotificationsScreen: React.FC = () => {
 
   const getNotificationText = (notification: Notification) => {
     switch (notification.type) {
+      case 'chirp':
+        return 'posted a chirp';
       case 'like':
         return 'liked your chirp';
       case 'retweet':
@@ -101,6 +106,7 @@ export const NotificationsScreen: React.FC = () => {
               transition={{ delay: index * 0.05 }}
               whileHover={{ scale: 1.01 }}
               className="p-4 rounded-2xl border border-border/50 cursor-pointer"
+              onClick={() => notification.tweet_id && navigate(`/chirp/${notification.tweet_id}`)}
               style={{
                 background: 'rgba(26, 18, 41, 0.5)',
                 backdropFilter: 'blur(10px)',

@@ -17,4 +17,17 @@ const upload = multer({
   },
 });
 
-module.exports = { upload };
+/** Multer for tweet creation: up to 2 images as image1, image2 */
+const tweetImagesUpload = multer({
+  storage,
+  limits: { fileSize: MAX_SIZE },
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_TYPES.includes(file.mimetype)) return cb(null, true);
+    cb(new Error('Allowed types: jpg, png, webp'));
+  },
+}).fields([
+  { name: 'image1', maxCount: 1 },
+  { name: 'image2', maxCount: 1 },
+]);
+
+module.exports = { upload, tweetImagesUpload };

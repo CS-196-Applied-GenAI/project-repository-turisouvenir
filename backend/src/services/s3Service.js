@@ -45,9 +45,37 @@ async function uploadProfilePicture(buffer, userId, mimetype) {
     Key: key,
     Body: buffer,
     ContentType: mimetype,
-    // ACL: 'public-read' if bucket allows; or use CloudFront/public URL pattern
+    ACL: 'public-read', // required so profile picture URLs work; bucket must allow ACLs
   }));
   return `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${key}`;
 }
 
-module.exports = { validateFile, uploadProfilePicture };
+/**
+ * Upload tweet image to S3. Key: tweet-images/{userId}-{timestamp}-{index}.{ext}
+ * @param {Buffer} buffer
+ * @param {number} userId
+ * @param {number} index 1 or 2
+ * @param {string} mimetype
+ * @returns {Promise<string>} URL
+ */
+async function uploadTweetImage(buffer, userId, index, mimetype) {
+  const ext = mimetype.split('/')[1] || 'jpg';
+  const key = `tweet-images/${userId}-${Date.now()}-${index}.${ext}`;
+  const client = new S3Client({
+    region: config.s3.region,
+    credentials: config.s3.accessKeyId ? {
+      accessKeyId: config.s3.accessKeyId,
+      secretAccessKey: config.s3.secretAccessKey,
+    } : undefined,
+  });
+  await client.send(new PutObjectCommand({
+    Bucket: config.s3.bucket,
+    Key: key,
+    Body: buffer,
+    ContentType: mimetype,
+    ACL: 'public-read',
+  }));
+  return `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${key}`;
+}
+
+module.exports = { validateFile, uploadProfilePicture, uploadTweetImage };

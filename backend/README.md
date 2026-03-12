@@ -11,6 +11,7 @@ Node.js/Express API for the Twitter clone (Chirper). MVC structure, JWT auth, My
 
 2. **Database**
    - Ensure MySQL is running and the `chirper` database exists with the schema applied (see `../CS196-Database-main/README.md`).
+   - If using in-app notifications (e.g. "someone you follow posted"), run `../CS196-Database-main/schema/07_notifications.sql`.
 
 3. **Environment**
    - Copy `.env.example` to `.env` and set:

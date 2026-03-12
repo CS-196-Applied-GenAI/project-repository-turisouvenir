@@ -77,6 +77,25 @@ export const ChirpCard = React.forwardRef<HTMLDivElement, ChirpCardProps>(({
             {chirpData.content}
           </p>
 
+          {(chirpData.image_1_url || chirpData.image_2_url) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {chirpData.image_1_url && (
+                <img
+                  src={chirpData.image_1_url}
+                  alt=""
+                  className="max-w-full max-h-64 rounded-xl object-cover border border-border/50"
+                />
+              )}
+              {chirpData.image_2_url && (
+                <img
+                  src={chirpData.image_2_url}
+                  alt=""
+                  className="max-w-full max-h-64 rounded-xl object-cover border border-border/50"
+                />
+              )}
+            </div>
+          )}
+
           {!isNested && (
             <div className="flex items-center gap-6 mt-4">
               <motion.button

@@ -5,11 +5,12 @@ const express = require('express');
 const tweetController = require('../controllers/tweetController');
 const commentController = require('../controllers/commentController');
 const { requireAuth } = require('../middleware/authMiddleware');
+const { tweetImagesUpload } = require('../middleware/uploadMiddleware');
 
 const router = express.Router();
 
 router.get('/:id', requireAuth, tweetController.getTweetById);
-router.post('/', requireAuth, tweetController.createTweet);
+router.post('/', requireAuth, tweetImagesUpload, tweetController.createTweet);
 router.put('/:id', requireAuth, tweetController.updateTweet);
 router.delete('/:id', requireAuth, tweetController.deleteTweet);
 router.post('/:id/like', requireAuth, tweetController.likeTweet);
