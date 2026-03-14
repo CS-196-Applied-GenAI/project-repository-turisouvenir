@@ -48,8 +48,16 @@ export const UserProfileScreen: React.FC = () => {
     try {
       const profileData = await getUserByUsername(username);
       setProfile(profileData);
-      const chirpsData = await getUserTweets(String(profileData.id));
-      setChirps(chirpsData.map(chirpToDisplay));
+      try {
+        const chirpsData = await getUserTweets(String(profileData.id));
+        setChirps(chirpsData.map(chirpToDisplay));
+      } catch (tweetsErr: unknown) {
+        const te = tweetsErr as { status?: number };
+        setChirps([]);
+        if (te?.status !== 404) {
+          toast.error((te as { error?: string }).error || 'Failed to load chirps');
+        }
+      }
     } catch (err: unknown) {
       const e = err as { error?: string; status?: number };
       setProfile(null);

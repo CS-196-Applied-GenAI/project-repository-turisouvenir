@@ -38,8 +38,15 @@ describe('POST /tweets', () => {
 
   it('returns 201 and tweet when valid', async () => {
     mockRequireAuth();
-    mockQuery.mockResolvedValueOnce([{ insertId: 1 }]); // create
-    mockQuery.mockResolvedValueOnce([[tweetRow(1, 1, 'Hello world today')]]); // findById - match created content
+    mockQuery
+      .mockResolvedValueOnce([{ insertId: 1 }])
+      .mockResolvedValueOnce([[tweetRow(1, 1, 'Hello world today')]])
+      .mockResolvedValueOnce([[{ id: 1, username: 'alice', profile_picture_url: null }]])
+      .mockResolvedValueOnce([[{ c: 0 }]])
+      .mockResolvedValueOnce([[{ c: 0 }]])
+      .mockResolvedValueOnce([[{ c: 0 }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]]);
     const res = await request(app)
       .post('/tweets')
       .set(authHeader(getToken()))
@@ -171,8 +178,15 @@ describe('GET /feed', () => {
 
   it('returns 200 and feed', async () => {
     mockRequireAuth();
-    mockQuery.mockResolvedValueOnce([[]]); // getBlockedSet (empty)
-    mockQuery.mockResolvedValueOnce([[tweetRow(1)]]); // feed query
+    mockQuery
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[tweetRow(1)]])
+      .mockResolvedValueOnce([[{ id: 1, username: 'alice', profile_picture_url: null }]])
+      .mockResolvedValueOnce([[{ c: 0 }]])
+      .mockResolvedValueOnce([[{ c: 0 }]])
+      .mockResolvedValueOnce([[{ c: 0 }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]]);
     const res = await request(app)
       .get('/feed')
       .set(authHeader(getToken()));

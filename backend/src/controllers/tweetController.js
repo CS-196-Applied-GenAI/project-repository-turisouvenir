@@ -221,8 +221,9 @@ async function getFeed(req, res, next) {
     let sql = 'SELECT t.* FROM tweets t WHERE t.is_deleted = FALSE';
     const params = [];
     if (blockedSet.size > 0) {
-      sql += ' AND t.author_id NOT IN (?)';
-      params.push([...blockedSet]);
+      const blocked = [...blockedSet];
+      sql += ' AND t.author_id NOT IN (' + blocked.map(() => '?').join(',') + ')';
+      params.push(...blocked);
     }
     if (cursor) {
       const parts = cursor.split('_');

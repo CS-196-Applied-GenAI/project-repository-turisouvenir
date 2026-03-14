@@ -28,7 +28,13 @@ describe('GET /users/:id', () => {
 
   it('returns 200 and user when valid', async () => {
     mockRequireAuth();
-    mockQuery.mockResolvedValueOnce([[{ id: 1, username: 'alice', email: 'alice@example.com', bio: null, profile_picture_url: null, created_at: new Date(), updated_at: new Date() }]]);
+    mockQuery
+      .mockResolvedValueOnce([[{ id: 1, username: 'alice', email: 'alice@example.com', bio: null, profile_picture_url: null, created_at: new Date(), updated_at: new Date() }]])
+      .mockResolvedValueOnce([[2]])
+      .mockResolvedValueOnce([[3]])
+      .mockResolvedValueOnce([[5]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]]);
     const res = await request(app)
       .get('/users/1')
       .set(authHeader(getToken()));
@@ -56,8 +62,14 @@ describe('PUT /users/me', () => {
 
   it('returns 200 when updating bio', async () => {
     mockRequireAuth();
-    mockQuery.mockResolvedValueOnce([undefined]); // update
-    mockQuery.mockResolvedValueOnce([[{ id: 1, username: 'alice', email: 'alice@example.com', bio: 'Hi', profile_picture_url: null, created_at: new Date(), updated_at: new Date() }]]); // findById
+    mockQuery
+      .mockResolvedValueOnce([undefined])
+      .mockResolvedValueOnce([[{ id: 1, username: 'alice', email: 'alice@example.com', bio: 'Hi', profile_picture_url: null, created_at: new Date(), updated_at: new Date() }]])
+      .mockResolvedValueOnce([[2]])
+      .mockResolvedValueOnce([[3]])
+      .mockResolvedValueOnce([[5]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]]);
     const res = await request(app)
       .put('/users/me')
       .set(authHeader(getToken()))
@@ -94,10 +106,12 @@ describe('POST /users/:id/follow', () => {
 
   it('returns 201 when following', async () => {
     mockRequireAuth();
-    mockQuery.mockResolvedValueOnce([[]]); // isBlocked(1,2)
-    mockQuery.mockResolvedValueOnce([[]]); // isBlocked(2,1)
-    mockQuery.mockResolvedValueOnce([[]]); // followModel.exists
-    mockQuery.mockResolvedValueOnce([undefined]); // followModel.add
+    mockQuery
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([undefined])
+      .mockResolvedValueOnce([[2]]);
     const res = await request(app)
       .post('/users/2/follow')
       .set(authHeader(getToken()));
@@ -108,13 +122,16 @@ describe('POST /users/:id/follow', () => {
 describe('DELETE /users/:id/follow', () => {
   beforeEach(() => mockQuery.mockReset());
 
-  it('returns 204 when unfollowing', async () => {
+  it('returns 200 when unfollowing', async () => {
     mockRequireAuth();
-    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }]); // remove
+    mockQuery
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([[{ follower_id: 1 }]]);
     const res = await request(app)
       .delete('/users/2/follow')
       .set(authHeader(getToken()));
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(200);
+    expect(res.body.is_following).toBe(false);
   });
 });
 
@@ -144,12 +161,13 @@ describe('POST /users/:id/block', () => {
 describe('DELETE /users/:id/block', () => {
   beforeEach(() => mockQuery.mockReset());
 
-  it('returns 204 when unblocking', async () => {
+  it('returns 200 when unblocking', async () => {
     mockRequireAuth();
     mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }]); // remove
     const res = await request(app)
       .delete('/users/2/block')
       .set(authHeader(getToken()));
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(200);
+    expect(res.body.is_blocked).toBe(false);
   });
 });

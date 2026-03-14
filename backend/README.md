@@ -24,7 +24,32 @@ Node.js/Express API for the Twitter clone (Chirper). MVC structure, JWT auth, My
 
 - `npm start` – run server
 - `npm run dev` – run with nodemon
-- `npm test` – run tests with coverage (target 90%+)
+- `npm test` – run all tests with coverage (target 90%+)
+- `npm run test:unit` – unit tests with coverage
+- `npm run test:integration` – **integration tests with coverage** (proof of API coverage)
+
+### Integration test coverage (proof)
+
+To generate proof of integration test coverage:
+
+```bash
+cd backend && npm run test:integration
+```
+
+This runs all integration tests against the API (auth, users, tweets, feed, comments, health) with mocked DB and produces:
+
+- **Console**: coverage summary (statements, branches, functions, lines)
+- **`coverage/`** folder:
+  - `coverage/index.html` – browsable HTML report
+  - `coverage/coverage-summary.json` – machine-readable summary for CI/docs
+
+Example output:
+```
+Test Suites: 5 passed, 5 total
+Tests:       43 passed, 43 total
+Statements   : 66.1%
+Lines       : 72.1%
+```
 
 ## Structure (MVC)
 
